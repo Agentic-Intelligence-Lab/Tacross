@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "name": "wrist-view-undistort-only",
+  "variables": {
+    "repo_root": "{config_dir}/../..",
+    "source_root": "{repo_root}/data/ego_raw",
+    "calibration": "{repo_root}/calibration/wrist_camera1.json",
+    "camera": "camera1",
+    "alpha": "0.0",
+    "undistort_adapter": "{repo_root}/adapters/undistort_wrist_view.py",
+    "artifact_root": "{repo_root}/artifacts/undistort",
+    "summary": "{artifact_root}/undistort_summary.json"
+  },
+  "run_root": "{artifact_root}/runs",
+  "stages": [
+    {
+      "name": "undistort_wrist",
+      "description": "Dewarp one camera view into rgb/<camera>_undistorted.mp4 and write a per-Episode report.",
+      "cwd": "{repo_root}",
+      "requires": ["{source_root}", "{calibration}", "{undistort_adapter}"],
+      "produces": ["{summary}"],
+      "accept_returncodes": [0, 3],
+      "command": [
+        "python3", "{undistort_adapter}", "{source_root}",
+        "--camera", "{camera}",
+        "--calibration", "{calibration}",
+        "--alpha", "{alpha}",
+        "--skip-failed",
+        "--summary-path", "{summary}"
+      ]
+    }
+  ]
+}

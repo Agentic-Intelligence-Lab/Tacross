@@ -24,6 +24,7 @@
 原始多相机数据
 → Episode 完整性检查          (manifest_raw)
 → 15Hz 因果时间同步            (sync_15hz)
+→ 腕部视角去畸变（可选）       (undistort_wrist)
 → 双视角手部姿态识别           (hamer_camera1 / camera3)
 → 双目恢复米制手腕轨迹         (stereo_wrist)
 → 手掌闭合程度 + 真机夹爪先验   (robot_gripper_prior → fuse_gripper)
@@ -36,6 +37,26 @@
 每个箭头都是 JSON 配置里的一个 stage：一条 argv 数组、一个工作目录、若干输入
 输出路径、若干可接受返回码。编排层不认识 HaMeR、Nero、Revo2 或 LeRobot，所以换
 后端是改配置，不是改代码。
+
+### 腕部视角去畸变
+
+`undistort_wrist` 是唯一会重写像素的阶段，但它只写新文件：
+`rgb/<camera>_undistorted.mp4`，原始视频保持逐字节不变。它按标定文件里的
+`model` 字段自动选择针孔（`pinhole`/`radtan`/`plumb_bob`）或鱼眼
+（`fisheye`/`equidistant`/`kb`）模型，`--camera` 指定哪一路，`--alpha` 沿用
+OpenCV 约定：`0` 只保留源图里真实存在的像素（无黑边，适合做训练数据），`1`
+保留全部源像素（四角变黑，适合量视野）。
+
+三个门决定 `PASS/FAIL`：`map_monotonic`（重映射不能回折——回折说明系数和镜头
+对不上，画面会撕裂而不是模糊）、`in_frame_fraction`（黑边比例）、
+`frame_count_match`（解码帧数与容器声明一致）。
+
+这一阶段是**可选**的：删掉配置里的 `undistort_wrist` 块，或用
+`--from-stage hamer_camera1` 从它之后开始跑即可。只想给已有数据集补做去畸变，
+用 `configs/wrist_undistort.example.json`，它只有这一个阶段。
+
+依赖：`pip install '.[undistort]'`（OpenCV），外加 PATH 里的 ffmpeg。装了 ffprobe
+会优先用它读视频几何，没有则回退到 OpenCV。流水线其余部分不需要 OpenCV。
 
 ## 设计原则
 

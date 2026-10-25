@@ -67,6 +67,31 @@ jobs:
           if excluded != ["episode_000003"]:
               sys.exit(f"episode 3 should have been rejected: {excluded}")
 
+  undistort:
+    name: undistort
+    runs-on: ubuntu-latest
+    env:
+      # Fail loudly instead of skipping when the optional dependencies are absent.
+      UNDISTORT_REQUIRE_DEPS: "1"
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install -r requirements-dev.txt -r requirements-undistort.txt
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+
+      - name: Show ffmpeg
+        run: ffmpeg -version | head -1
+
+      - name: Undistortion tests (calibration, geometry, video round trip)
+        run: python -m pytest postprocess_pipeline/tests/test_undistort.py -q
+
   release-scan:
     name: privacy scan
     runs-on: ubuntu-latest

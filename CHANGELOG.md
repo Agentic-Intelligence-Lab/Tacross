@@ -8,11 +8,22 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Wrist-view undistortion** (`adapters/undistort_wrist_view.py`, stage 5). Reads
+  camera intrinsics from JSON, supports pinhole/radtan and fisheye/equidistant
+  models, and re-encodes one camera view into `rgb/<camera>_undistorted.mp4`
+  without touching the source recording. Gates on a folded remap, the blank-border
+  fraction, and a frame-count match. `--camera` is configurable, `--alpha` follows
+  the OpenCV convention, and the resolved `K`/`D`/`new_K` are recorded per episode
+  in `sync/undistort_report.json`. Optional: needs `opencv-python-headless` and
+  ffmpeg, installable with `pip install '.[undistort]'`.
+- `configs/wrist_undistort.example.json` runs the dewarp stage on its own, for
+  retrofitting an existing dataset.
 - Synthetic end-to-end demo (`examples/`) that runs the real pipeline with no
   cameras, GPU, ffmpeg, or external model, and deliberately fails one episode so
   the quality gate is observable.
 - `docs/ARCHITECTURE.md`, `docs/PIPELINE_STAGES.md`, `docs/TROUBLESHOOTING.md`.
-- CI across Linux, macOS, and Windows on Python 3.10–3.13.
+- CI across Linux, macOS, and Windows on Python 3.10–3.13, plus a dedicated job
+  that installs OpenCV and ffmpeg so the undistortion tests cannot silently skip.
 
 ### Changed
 

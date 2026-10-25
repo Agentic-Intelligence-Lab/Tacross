@@ -40,6 +40,7 @@ INCLUDE_FILES = (
     "pyproject.toml",
     "requirements.txt",
     "requirements-dev.txt",
+    "requirements-undistort.txt",
 )
 EXCLUDED_PARTS = {"__pycache__", ".pytest_cache", ".ruff_cache", ".git"}
 EXCLUDED_SUFFIXES = {".pyc", ".pyo", ".swp", ".swo"}

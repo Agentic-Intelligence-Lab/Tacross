@@ -41,6 +41,9 @@ dependencies = [
 [project.optional-dependencies]
 # The fusion and IK adapters smooth trajectories with Savitzky-Golay filters.
 adapters = ["scipy>=1.10"]
+# The wrist-view undistortion adapter remaps frames with OpenCV; it also needs
+# ffmpeg on PATH (ffprobe is optional). Nothing else imports OpenCV.
+undistort = ["opencv-python-headless>=4.8"]
 dev = [
   "pytest>=7.4",
   "pytest-cov>=4.1",

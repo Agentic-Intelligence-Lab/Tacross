@@ -1,0 +1,5 @@
+# Only the wrist-view undistortion adapter needs these. The rest of the
+# pipeline runs without them; ffmpeg must also be on PATH (ffprobe is used when
+# present and is otherwise replaced by OpenCV's own probe).
+-r requirements.txt
+opencv-python-headless>=4.8

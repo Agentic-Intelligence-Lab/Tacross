@@ -22,6 +22,48 @@ An episode discovery/validation command must write a JSON manifest containing:
 Source Episode identifiers must remain stable. The pipeline represents
 selection through manifests and must not delete or compact source Episodes.
 
+## View undistortion adapter
+
+An undistortion adapter removes lens distortion from one camera view. It is the
+only adapter allowed to rewrite pixels, and it must write them to a **new** path:
+the source video is opened read-only and must remain byte-identical.
+
+It consumes a calibration file describing one camera:
+
+```json
+{
+  "cameras": {
+    "camera1": {
+      "model": "fisheye",
+      "image_size": [1920, 1080],
+      "K": [[700.0, 0.0, 960.0], [0.0, 700.0, 540.0], [0.0, 0.0, 1.0]],
+      "D": [0.12, -0.03, 0.008, -0.001]
+    }
+  }
+}
+```
+
+`model` is `pinhole` (also `radtan`, `plumb_bob`, `rational_polynomial`, `brown`)
+or `fisheye` (also `equidistant`, `kb`, `kannala_brandt`). `D` is `k1, k2, p1,
+p2[, k3[, k4, k5, k6]]` for pinhole and `k1..k4` for fisheye. `K` and `D` may
+also be spelled `camera_matrix` / `dist_coeffs`; the image size may be
+`image_size: [w, h]` or `image_width` + `image_height`. A flat single-camera file
+with no `cameras` wrapper is accepted and answers to any requested camera name; a
+file that names its cameras must be asked for the right one.
+
+It writes, per Episode, a report containing:
+
+- `status: PASS|FAIL` and the source/output geometry, frame count and fps;
+- the resolved `model`, `alpha`, `K`, `D` and the resulting `new_matrix`;
+- the intrinsics rescale factor when the video resolution differs from the
+  calibration, and the warning that says so;
+- `in_frame_fraction` and `map_monotonic`, the two numbers behind the decision.
+
+A fold in the remap (`map_monotonic: false`) must fail the Episode: it means the
+coefficients do not describe this lens, and the output is torn rather than merely
+wrong. The adapter must never silently substitute a different camera's intrinsics
+for the one requested.
+
 ## Hand-pose backend
 
 A hand-pose backend consumes synchronized image indices and emits one row per

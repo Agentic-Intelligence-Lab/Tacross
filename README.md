@@ -35,20 +35,26 @@ flowchart TD
     B --> C[2 · 15 Hz causal timeline<br/>camera + tactile, no Rokoko]
     C --> D[3 · Timeline-ready manifest]
     D --> E[4 · Robot gripper prior<br/>from real teleop feedback]
-    D --> F[5-6 · Hand pose<br/>camera1 + camera3]
-    F --> G[7 · Stereo wrist<br/>metric triangulation]
-    E --> H[8 · Gripper fusion<br/>visual closure + robot anchors]
+    D -. optional .-> U[5 · Wrist view dewarp<br/>derived video + report]
+    D --> F[6-7 · Hand pose<br/>camera1 + camera3]
+    F --> G[8 · Stereo wrist<br/>metric triangulation]
+    E --> H[9 · Gripper fusion<br/>visual closure + robot anchors]
     G --> H
-    H --> I[9 · IK-ready manifest<br/>drop failed stereo / fusion]
-    I --> J[10 · Retargeting + IK<br/>joint, FK, limit gates]
-    J --> K[11 · Per-episode audit<br/>training-ready list]
-    K --> L[12 · LeRobot packer<br/>+ normalization statistics]
+    H --> I[10 · IK-ready manifest<br/>drop failed stereo / fusion]
+    I --> J[11 · Retargeting + IK<br/>joint, FK, limit gates]
+    J --> K[12 · Per-episode audit<br/>training-ready list]
+    K --> L[13 · LeRobot packer<br/>+ normalization statistics]
     L --> M[(Trainable dataset)]
 ```
 
 Every arrow is a stage in a JSON config. Every stage is a plain argv array, run
 without a shell. Nothing is deleted, renamed, or renumbered in the source data —
 selection is always expressed as a manifest.
+
+Stage 5 is the only one that rewrites pixels, and it writes to a new file: the
+wrist view is dewarped into `rgb/<camera>_undistorted.mp4` next to the untouched
+source. Nothing downstream reads that file unless you point a stage at it, so it
+is safe to leave in the template and ignore.
 
 ## Design principles
 

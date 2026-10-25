@@ -11,11 +11,15 @@
     "stereo_calibration": "{project_root}/calibration/stereo.json",
     "base_calibration": "{project_root}/calibration/camera_to_robot_base.json",
     "start_contract": "{project_root}/calibration/demonstrated_robot_start.json",
+    "wrist_calibration": "{project_root}/calibration/wrist_camera1.json",
+    "wrist_camera": "camera1",
+    "undistort_alpha": "0.0",
     "adapter_root": "{project_root}/adapters",
     "timeline_adapter": "{adapter_root}/build_ego_no_rokoko_15hz_timeline.py",
     "gripper_fusion_adapter": "{adapter_root}/fuse_hamer_revo2_gripper.py",
     "robot_ik_adapter": "{adapter_root}/build_ego_fruit_ik_trajectory.py",
     "dataset_packer_adapter": "{adapter_root}/prepare_pi05_ego_fruit_lerobot.py",
+    "undistort_adapter": "{adapter_root}/undistort_wrist_view.py",
     "episode_first": "1",
     "episode_last": "100",
     "robot_episode_first": "0",
@@ -30,6 +34,7 @@
     "ik_root": "{derived_root}/ik",
     "gripper_prior": "{derived_root}/robot_gripper_prior.json",
     "audit_report": "{artifact_root}/pipeline_audit.json",
+    "undistort_summary": "{derived_root}/undistort_summary.json",
     "output_root": "{project_root}/outputs/ego_hamer_stereo_ik_lerobot",
     "output_repo_id": "local/ego_hamer_stereo_ik_lerobot"
   },
@@ -86,6 +91,20 @@
         "--output-dir", "{derived_root}", "--output-prefix", "robot_gripper_prior",
         "--first-episode", "{robot_episode_first}", "--last-episode", "{robot_episode_last}",
         "--state-index", "{gripper_state_index}", "--task-scope", "{task_instruction}"
+      ]
+    },
+    {
+      "name": "undistort_wrist",
+      "description": "Dewarp the wrist camera into a derived video; the source recording is never modified.",
+      "cwd": "{project_root}",
+      "requires": ["{manifest_ready}", "{wrist_calibration}", "{undistort_adapter}"],
+      "produces": ["{undistort_summary}"],
+      "accept_returncodes": [0, 3],
+      "command": [
+        "python3", "{pipeline_root}/tools/run_with_manifest.py", "--manifest", "{manifest_ready}",
+        "--target-flag=--episode", "--", "python3", "{undistort_adapter}",
+        "{source_root}", "--camera", "{wrist_camera}", "--calibration", "{wrist_calibration}",
+        "--alpha", "{undistort_alpha}", "--skip-failed", "--summary-path", "{undistort_summary}"
       ]
     },
     {

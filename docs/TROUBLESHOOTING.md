@@ -95,3 +95,52 @@ python postprocess_pipeline/pipeline.py --config CONFIG.json \
 failed a gate, the audit is honest about it and the packer has nothing to write.
 Read `pipeline_audit.json` → `rejected_episodes`, then the per-episode
 `offline_ik_report.json` and `gripper_hamer_robot_prior_metadata.json`.
+
+## `UNDISTORT_CONFIG_ERROR: no block for camera 'camera1'`
+
+The calibration file names its cameras and `camera1` is not one of them. The
+error lists what is available. Either pass the right `--camera`, or wrap a
+single-camera file so it can answer for any name:
+
+```json
+{"cameras": {"camera1": {"model": "fisheye", "image_size": [1920, 1080],
+                          "K": [[...]], "D": [...]}}}
+```
+
+A flat file with no `cameras` wrapper answers to any requested name, because
+there is only one camera in it and no name to get wrong. A file that names its
+cameras never substitutes one for another.
+
+## `the rectification map folds back along the optical axes`
+
+The distortion coefficients do not describe this lens: `r → r(1 + k1r² + k2r⁴ + …)`
+stops being monotonic inside the frame, so the dewarped image tears or mirrors
+instead of bending. Check, in this order:
+
+1. **Model.** A fisheye lens described as `pinhole` (or the reverse) folds almost
+   immediately. `model` must be `fisheye`/`equidistant`/`kb` for an equidistant
+   lens.
+2. **Coefficient order.** Pinhole is `k1, k2, p1, p2[, k3]`; fisheye is `k1..k4`.
+   Swapping tangential for radial terms looks plausible and folds the map.
+3. **Resolution.** Intrinsics are rescaled automatically when the video matches
+   the calibration's aspect ratio, and the factor is recorded in the report as
+   `calibration.rescale_factor`. A factor far from 1.0 usually means the
+   calibration was made at a different capture mode.
+
+Run with `--dry-run` to see the resolved matrix, `D`, `new_matrix` and
+`in_frame_fraction` without writing a single frame.
+
+## `only 62.0% of the output samples inside the source frame`
+
+`alpha` is too high for this calibration: the output includes regions the source
+never recorded, so they come out black. Lower `--alpha` (0 keeps only valid
+pixels), or accept it deliberately and lower `--min-in-frame`. `alpha=0` sits at
+100% by construction, so a low fraction there points at a wrong principal point
+rather than at `alpha`.
+
+## The dewarped video exists but the dataset still uses the raw one
+
+By design. `rgb/<camera>_undistorted.mp4` is a *derived* view and no stage reads
+it implicitly. Point the packer or the hand-pose backend at it explicitly, and
+keep `sync/undistort_report.json` with the episode so the parameters used stay
+recoverable.
