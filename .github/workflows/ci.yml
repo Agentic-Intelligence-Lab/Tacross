@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: test (${{ matrix.os }}, py${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.10", "3.13"]
+        include:
+          - os: ubuntu-latest
+            python: "3.11"
+          - os: ubuntu-latest
+            python: "3.12"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements-dev.txt
+
+      - name: Lint
+        run: python -m ruff check .
+
+      - name: Unit tests
+        run: python -m pytest --cov=postprocess_pipeline --cov-report=term-missing
+
+      - name: Build the synthetic demo dataset
+        run: python examples/make_demo_dataset.py
+
+      - name: Run the demo pipeline (dry run must not create a run directory)
+        run: python postprocess_pipeline/pipeline.py --config examples/demo.pipeline.json
+
+      - name: Run the demo pipeline end to end
+        run: python postprocess_pipeline/pipeline.py --config examples/demo.pipeline.json --execute
+
+      - name: Assert the quality gate rejected episode 3
+        shell: python
+        run: |
+          import json, pathlib, sys
+          manifest = json.loads(
+              pathlib.Path("examples/demo_data/artifacts/manifest_ik_ready.json").read_text()
+          )
+          valid = manifest["valid_episodes"]
+          excluded = [item["episode"] for item in manifest["excluded_episodes"]]
+          print("valid:", valid)
+          print("excluded:", excluded)
+          if valid != ["episode_000001", "episode_000002"]:
+              sys.exit(f"unexpected valid episodes: {valid}")
+          if excluded != ["episode_000003"]:
+              sys.exit(f"episode 3 should have been rejected: {excluded}")
+
+  release-scan:
+    name: privacy scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build the source archive (scans for leaked paths and credentials)
+        run: python postprocess_pipeline/build_release.py --version 0.0.0-ci
+      - name: Verify the archive is deterministic
+        run: |
+          python postprocess_pipeline/build_release.py --version 0.0.0-ci \
+            --output-dir /tmp/second-build
+          sha256sum dist/*.zip /tmp/second-build/*.zip
