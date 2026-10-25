@@ -1,0 +1,47 @@
+name: Feature or adapter request
+description: Propose a new backend, stage, or quality gate.
+labels: ["enhancement"]
+body:
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of change
+      options:
+        - New hand-pose backend
+        - New robot / IK adapter
+        - New dataset packer
+        - New stage or tool
+        - Change to an existing gate
+        - Documentation
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What fails, or what is impossible, today.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed interface
+      description: |
+        Which contract in `ADAPTER_CONTRACTS.md` does this implement? What are the
+        inputs, outputs, and the numeric evidence behind its PASS/FAIL decision?
+    validations:
+      required: true
+  - type: textarea
+    id: licensing
+    attributes:
+      label: Dependencies and licensing
+      description: |
+        What would this pull in, and under what license? Noncommercial or
+        proprietary dependencies must stay optional and external.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: This cannot be done today by pointing an existing stage at a different executable.
+        - label: I read `ADAPTER_CONTRACTS.md`.

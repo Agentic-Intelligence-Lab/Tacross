@@ -1,0 +1,56 @@
+embodied-postprocess-pipeline
+Copyright (C) 2026 Yu Fangdi
+
+This project is licensed under the GNU Lesser General Public License,
+version 3. See LICENSE for the full text.
+
+===============================================================================
+Third-party components
+===============================================================================
+
+This repository contains no third-party source code and no model weights. The
+following components are referenced as *optional external dependencies* and are
+not relicensed by this project. Their own terms apply.
+
+1. HumanEgo / HaMeR
+   Used by: adapters/prepare_pi05_ego_fruit_lerobot.py (lazily imported),
+            and the optional hand-pose / stereo stages referenced in
+            postprocess_pipeline/configs/ego_hamer_stereo_ik.template.json
+   License: PolyForm Noncommercial License 1.0.0
+   Note:    Noncommercial. Do not vendor this source tree or its weights into a
+            release of this project. Keep it an external, separately installed
+            dependency and preserve its license.
+
+2. HaMeR (Hand Mesh Recovery)
+   Used by: the hand-pose backend behind the hamer_camera1 / hamer_camera3
+            stages, when that backend is configured.
+   License: see the upstream repository and its model-weight terms.
+
+3. LeRobot
+   Used by: adapters/prepare_pi05_ego_fruit_lerobot.py at runtime.
+   License: see the upstream repository.
+
+4. Nero / Revo2 robot SDK and URDF
+   Used by: adapters/build_ego_fruit_ik_trajectory.py through
+            --ik-backend-script.
+   License: vendor-specific. Not distributed here.
+
+5. MediaPipe, MANO, and other hand models
+   Not distributed. Any of them may be substituted for the hand-pose backend if
+   the adapter contract is satisfied.
+
+===============================================================================
+Datasets and recordings
+===============================================================================
+
+No datasets, recordings, calibration files, or hardware serial numbers are
+included. Any dataset you build with this pipeline is your responsibility to
+license, and recordings of people require participant consent before
+publication.
+
+===============================================================================
+Trademarks
+===============================================================================
+
+Product and company names are the property of their respective owners and are
+used only to describe compatibility.

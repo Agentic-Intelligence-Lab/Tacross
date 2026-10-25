@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "name": "robot-teleop-post-acquisition-qc",
+  "variables": {
+    "repo_root": "{config_dir}/../..",
+    "source_root": "{repo_root}/data/robot_teleop_raw",
+    "artifact_root": "{repo_root}/artifacts/postprocess/robot"
+  },
+  "run_root": "{artifact_root}/runs",
+  "stages": [
+    {
+      "name": "quality_check",
+      "description": "逐帧检查完整性、同步、状态/动作、触觉和三路视频。",
+      "cwd": "{repo_root}",
+      "requires": [
+        "{repo_root}/dataset_quality_check.py",
+        "{source_root}/meta/info.json"
+      ],
+      "produces": ["{artifact_root}/quality_all.json"],
+      "command": [
+        "python3",
+        "{repo_root}/dataset_quality_check.py",
+        "{source_root}",
+        "--episode",
+        "all",
+        "--json-out",
+        "{artifact_root}/quality_all.json"
+      ]
+    },
+    {
+      "name": "screen_training",
+      "description": "生成 KEEP/REVIEW/REJECT 清单和三相机 contact sheets，不修改原数据。",
+      "cwd": "{repo_root}",
+      "requires": [
+        "{repo_root}/screen_training_episodes.py",
+        "{source_root}/meta/info.json"
+      ],
+      "produces": ["{artifact_root}/screening/quality_screening.json"],
+      "command": [
+        "python3",
+        "{repo_root}/screen_training_episodes.py",
+        "{source_root}",
+        "--episode",
+        "all",
+        "--sample-video-frames",
+        "18",
+        "--output-dir",
+        "{artifact_root}/screening"
+      ]
+    }
+  ]
+}

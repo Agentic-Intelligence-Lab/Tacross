@@ -1,0 +1,200 @@
+{
+  "schema_version": 1,
+  "name": "ego-task2-rokoko-to-lerobot-v3",
+  "variables": {
+    "repo_root": "{config_dir}/../..",
+    "ego_workspace": "{repo_root}/data/ego_workspace",
+    "tool_root": "{ego_workspace}/third_party/HumanEgo/ego_dropper",
+    "public_toolkit": "{ego_workspace}/public/ego-dropper-toolkit",
+    "source_root": "{ego_workspace}/ego-task2-ep1-91",
+    "episode_spec": "1-91",
+    "ranges": "{ego_workspace}/robot/gripper_1dof_ranges.json",
+    "stereo_calibration": "{ego_workspace}/robot/calibration/stereo_cam1_cam3_current.json",
+    "ik_root": "{ego_workspace}/ego-ik-task2/outputs",
+    "reference_dataset": "{repo_root}/recordings/nero_dropper_act_3cam_tactile_ep201_501_277_v5_15hz",
+    "output_root": "{ego_workspace}/recordings/ego_ik_task2_openrelease_v1_40d_15hz",
+    "artifact_root": "{repo_root}/artifacts/postprocess/ego_task2"
+  },
+  "run_root": "{artifact_root}/runs",
+  "stages": [
+    {
+      "name": "validate_raw",
+      "description": "检查 Episode 结构并生成有效条目清单。",
+      "cwd": "{ego_workspace}",
+      "requires": [
+        "{public_toolkit}/scripts/validate_episodes.py",
+        "{source_root}"
+      ],
+      "produces": [
+        "{artifact_root}/episode_validation_report.json",
+        "{artifact_root}/valid_episodes.json"
+      ],
+      "command": [
+        "python3",
+        "{public_toolkit}/scripts/validate_episodes.py",
+        "{source_root}",
+        "--output-report",
+        "{artifact_root}/episode_validation_report.json",
+        "--output-manifest",
+        "{artifact_root}/valid_episodes.json"
+      ]
+    },
+    {
+      "name": "gripper_1dof",
+      "description": "从 Rokoko 手指控制量生成语义化 1-DoF 抓手轨迹。",
+      "cwd": "{ego_workspace}",
+      "requires": [
+        "{public_toolkit}/scripts/build_gripper_1dof.py",
+        "{ranges}"
+      ],
+      "command": [
+        "python3",
+        "{public_toolkit}/scripts/build_gripper_1dof.py",
+        "{source_root}",
+        "--ranges",
+        "{ranges}"
+      ]
+    },
+    {
+      "name": "sync_15hz",
+      "description": "将三路相机、触觉和 Rokoko 对齐到共同有效的 15 Hz 因果时间线。",
+      "cwd": "{ego_workspace}",
+      "requires": [
+        "{public_toolkit}/scripts/build_unified_15hz_timeline.py",
+        "{artifact_root}/valid_episodes.json",
+        "{ranges}"
+      ],
+      "command": [
+        "python3",
+        "{public_toolkit}/scripts/build_unified_15hz_timeline.py",
+        "{source_root}",
+        "--ranges",
+        "{ranges}",
+        "--manifest",
+        "{artifact_root}/valid_episodes.json"
+      ]
+    },
+    {
+      "name": "hamer_camera1",
+      "description": "在 camera1 的统一时间线帧上估计右手腕姿态。",
+      "cwd": "{ego_workspace}",
+      "requires": ["{tool_root}/build_hamer_hand_cam.py"],
+      "command": [
+        "/usr/bin/python3",
+        "{tool_root}/build_hamer_hand_cam.py",
+        "{source_root}",
+        "--camera",
+        "camera1",
+        "--device",
+        "cuda",
+        "--no-qc-video",
+        "--no-qc-joints21"
+      ]
+    },
+    {
+      "name": "hamer_camera3",
+      "description": "在 camera3 的统一时间线帧上估计右手腕姿态。",
+      "cwd": "{ego_workspace}",
+      "requires": ["{tool_root}/build_hamer_hand_cam.py"],
+      "command": [
+        "/usr/bin/python3",
+        "{tool_root}/build_hamer_hand_cam.py",
+        "{source_root}",
+        "--camera",
+        "camera3",
+        "--device",
+        "cuda",
+        "--no-qc-video",
+        "--no-qc-joints21"
+      ]
+    },
+    {
+      "name": "stereo_wrist",
+      "description": "用 camera1/camera3 标定结果三角化米制手腕轨迹。",
+      "cwd": "{ego_workspace}",
+      "requires": [
+        "{tool_root}/build_hand_stereo_15hz.py",
+        "{stereo_calibration}"
+      ],
+      "command": [
+        "/usr/bin/python3",
+        "{tool_root}/build_hand_stereo_15hz.py",
+        "{source_root}",
+        "--calibration",
+        "{stereo_calibration}",
+        "--output-label",
+        "currentcalib",
+        "--no-qc-video"
+      ]
+    },
+    {
+      "name": "offline_ik",
+      "description": "把双目手腕位姿重定向为 Nero 7 关节＋Revo2 1-DoF 动作，并执行 IK 质量门。",
+      "cwd": "{ego_workspace}",
+      "requires": [
+        "{tool_root}/build_ego_ik_task2_trajectory.py",
+        "{stereo_calibration}"
+      ],
+      "produces": ["{ego_workspace}/ego-ik-task2/batch_summary.json"],
+      "env": {
+        "PYTHONPATH": "{repo_root}"
+      },
+      "command": [
+        "python3",
+        "{tool_root}/build_ego_ik_task2_trajectory.py",
+        "--source-root",
+        "{source_root}",
+        "--episodes",
+        "{episode_spec}",
+        "--gripper-close-scale",
+        "0.75",
+        "--skip-missing"
+      ]
+    },
+    {
+      "name": "pack_lerobot_v3",
+      "description": "解码三路图像、融合触觉/状态/动作并写为 15 Hz LeRobot v3。",
+      "cwd": "{ego_workspace}",
+      "requires": [
+        "{tool_root}/prepare_ego_ik_task2_lerobot_v3.py",
+        "{ik_root}",
+        "{reference_dataset}/meta/info.json"
+      ],
+      "produces": ["{output_root}/meta/info.json"],
+      "command": [
+        "python3",
+        "{tool_root}/prepare_ego_ik_task2_lerobot_v3.py",
+        "--source-root",
+        "{source_root}",
+        "--ik-root",
+        "{ik_root}",
+        "--reference-dataset",
+        "{reference_dataset}",
+        "--output-root",
+        "{output_root}",
+        "--output-repo-id",
+        "local/ego_ik_task2_openrelease_v1_40d_15hz",
+        "--require-ready"
+      ]
+    },
+    {
+      "name": "validate_output",
+      "description": "核对 LeRobot 元数据、帧数、状态/动作数值、三路视频解码和动作连续性。",
+      "cwd": "{repo_root}",
+      "requires": [
+        "{repo_root}/validate_act_dataset.py",
+        "{output_root}/meta/info.json",
+        "{output_root}/preprocess_summary.json"
+      ],
+      "produces": ["{output_root}/validation_report.json"],
+      "command": [
+        "python3",
+        "{repo_root}/validate_act_dataset.py",
+        "--root",
+        "{output_root}",
+        "--repo-id",
+        "local/ego_ik_task2_openrelease_v1_40d_15hz"
+      ]
+    }
+  ]
+}

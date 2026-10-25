@@ -1,0 +1,8 @@
+-r requirements.txt
+
+# The fusion and IK adapters smooth trajectories with Savitzky-Golay filters.
+scipy>=1.10
+
+pytest>=7.4
+pytest-cov>=4.1
+ruff>=0.5

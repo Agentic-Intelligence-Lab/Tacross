@@ -1,0 +1,53 @@
+name: Bug report
+description: A stage fails, produces wrong output, or a gate misbehaves.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before pasting anything, redact absolute paths, hostnames, usernames, and
+        hardware serial numbers. `provenance.json` and stage logs contain them.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: The actual result, including the exact error line.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      description: If a quality gate fired, say whether you think it should have.
+    validations:
+      required: true
+  - type: textarea
+    id: config
+    attributes:
+      label: Relevant config
+      description: The stage block, with paths replaced by placeholders.
+      render: json
+  - type: textarea
+    id: provenance
+    attributes:
+      label: Provenance and log tail
+      description: |
+        From `run_root/<timestamp>_<config>/`:
+        `provenance.json` and the failing `<stage>_01.log`.
+      render: text
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: "OS, Python version, install method (pip / venv / conda)"
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I ran the command as a dry run first and the plan looked correct.
+        - label: I checked that the required input files actually exist.
+        - label: I removed private paths and identifiers from this report.
+          required: true

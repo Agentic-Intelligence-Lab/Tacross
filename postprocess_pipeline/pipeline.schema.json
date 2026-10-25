@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:embodied-ai:postprocess-pipeline:v1",
+  "title": "Reproducible post-acquisition pipeline",
+  "type": "object",
+  "required": ["schema_version", "name", "variables", "stages"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "name": {"type": "string", "minLength": 1},
+    "variables": {
+      "type": "object",
+      "additionalProperties": {"type": ["string", "number", "boolean"]}
+    },
+    "run_root": {"type": "string"},
+    "stages": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {"type": "string", "minLength": 1},
+          "description": {"type": "string"},
+          "cwd": {"type": "string"},
+          "command": {
+            "type": "array",
+            "items": {"type": "string"},
+            "minItems": 1
+          },
+          "commands": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {"type": "string"},
+              "minItems": 1
+            }
+          },
+          "requires": {"type": "array", "items": {"type": "string"}},
+          "produces": {"type": "array", "items": {"type": "string"}},
+          "env": {"type": "object", "additionalProperties": {"type": "string"}},
+          "accept_returncodes": {
+            "type": "array",
+            "minItems": 1,
+            "items": {"type": "integer", "minimum": 0, "maximum": 255}
+          }
+        },
+        "oneOf": [{"required": ["command"]}, {"required": ["commands"]}],
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

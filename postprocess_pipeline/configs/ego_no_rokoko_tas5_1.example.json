@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "name": "ego-tas5-1-no-rokoko-to-pi05",
+  "variables": {
+    "repo_root": "{config_dir}/../..",
+    "ego_workspace": "{repo_root}/data/ego_workspace",
+    "source_root": "{ego_workspace}/tas5-1",
+    "wrapper": "{repo_root}/prepare_tas5_1_ep055_245_no_rokoko_fruit_v1.sh",
+    "derived_root": "{repo_root}/derived/tas5_1_fruit_no_rokoko_ep055_245_v1",
+    "ik_root": "{derived_root}/ik",
+    "manifest": "{repo_root}/reports/tas5_1_ep055_245_structural_screening.json",
+    "output_root": "{repo_root}/recordings/tas5_1_fruit_ego_openrelease_pi05_v1_3cam_8d_15hz",
+    "artifact_root": "{repo_root}/artifacts/postprocess/ego_tas5_1"
+  },
+  "run_root": "{artifact_root}/runs",
+  "stages": [
+    {
+      "name": "manifest",
+      "description": "根据坏视频审计生成 episode_055-245 的保留清单。",
+      "cwd": "{repo_root}",
+      "requires": ["{wrapper}", "{source_root}"],
+      "produces": ["{manifest}"],
+      "command": ["bash", "{wrapper}", "manifest"]
+    },
+    {
+      "name": "sync_15hz",
+      "description": "无 Rokoko 模式：按共同相机/触觉时钟生成 15 Hz 因果时间线。",
+      "cwd": "{repo_root}",
+      "requires": ["{wrapper}", "{manifest}"],
+      "produces": ["{derived_root}/timeline_summary.json"],
+      "command": ["bash", "{wrapper}", "timeline"]
+    },
+    {
+      "name": "robot_gripper_prior",
+      "description": "从 Robot 遥操示教建立 Revo2 抓手先验与合法范围。",
+      "cwd": "{repo_root}",
+      "requires": ["{wrapper}"],
+      "produces": ["{derived_root}/revo2_gripper_prior_ep556_746.json"],
+      "command": ["bash", "{wrapper}", "prior"]
+    },
+    {
+      "name": "hamer_both_cameras",
+      "description": "并行处理 camera1/camera3 的 HaMeR 右手腕特征。",
+      "cwd": "{repo_root}",
+      "requires": ["{wrapper}", "{manifest}"],
+      "command": ["bash", "{wrapper}", "hamer"]
+    },
+    {
+      "name": "stereo_wrist",
+      "description": "双目三角化米制手腕位置，并保留 HaMeR 手腕朝向。",
+      "cwd": "{repo_root}",
+      "requires": ["{wrapper}"],
+      "command": ["bash", "{wrapper}", "stereo"]
+    },
+    {
+      "name": "fuse_gripper",
+      "description": "将视觉手部闭合量映射到 Robot 抓手先验，生成 1-DoF 抓手轨迹。",
+      "cwd": "{repo_root}",
+      "requires": [
+        "{wrapper}",
+        "{derived_root}/revo2_gripper_prior_ep556_746.json"
+      ],
+      "command": ["bash", "{wrapper}", "gripper"]
+    },
+    {
+      "name": "offline_ik",
+      "description": "双目手腕位移到 Nero 7-DoF 连续轨迹，检查关节步长、FK 残差和限位。",
+      "cwd": "{repo_root}",
+      "requires": ["{wrapper}", "{manifest}"],
+      "produces": ["{ik_root}/batch_summary.json"],
+      "command": ["bash", "{wrapper}", "ik"]
+    },
+    {
+      "name": "audit",
+      "description": "汇总时间线、双目、抓手和 IK 的逐 Episode 质量门结果。",
+      "cwd": "{repo_root}",
+      "requires": ["{wrapper}", "{ik_root}/batch_summary.json"],
+      "produces": ["{repo_root}/reports/tas5_1_ep055_245_pipeline_audit.json"],
+      "command": ["bash", "{wrapper}", "check"]
+    },
+    {
+      "name": "pack_lerobot_v3",
+      "description": "将通过质量门的三路 Ego 视频和 IK 动作打包为 Pi0.5/LeRobot v3。",
+      "cwd": "{repo_root}",
+      "requires": [
+        "{repo_root}/adapters/prepare_pi05_ego_fruit_lerobot.py",
+        "{ik_root}/batch_summary.json"
+      ],
+      "produces": ["{output_root}/meta/info.json"],
+      "command": [
+        "python3",
+        "{repo_root}/adapters/prepare_pi05_ego_fruit_lerobot.py",
+        "--source-root",
+        "{source_root}",
+        "--ik-root",
+        "{ik_root}",
+        "--timeline-relative-path",
+        "sync/unified_no_rokoko_15hz_timeline.csv",
+        "--output-root",
+        "{output_root}",
+        "--output-repo-id",
+        "local/tas5_1_fruit_ego_openrelease_pi05_v1_3cam_8d_15hz"
+      ]
+    }
+  ]
+}

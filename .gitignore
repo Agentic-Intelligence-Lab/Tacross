@@ -1,0 +1,69 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+eggs/
+.eggs/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Test and tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+
+# Pipeline working directories
+data/
+artifacts/
+outputs/
+recordings/
+derived/
+calibration/
+runs/
+external_workspace/
+
+# Demo output
+examples/demo_data/
+
+# Datasets and model weights must never be committed
+*.parquet
+*.mp4
+*.avi
+*.mkv
+*.hdf5
+*.h5
+*.pth
+*.pt
+*.ckpt
+*.onnx
+*.safetensors
+
+# Editor and OS noise
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local overrides: keep real paths and credentials out of git
+*.local.json
+.env
+.env.*

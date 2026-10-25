@@ -1,0 +1,202 @@
+{
+  "schema_version": 1,
+  "name": "ego-hamer-stereo-ik-to-lerobot",
+  "variables": {
+    "project_root": "{config_dir}/../..",
+    "pipeline_root": "{project_root}/postprocess_pipeline",
+    "source_root": "{project_root}/data/ego_raw",
+    "humanego_root": "{project_root}/external/HumanEgo/ego_dropper",
+    "robot_dataset": "{project_root}/data/robot_demonstrations",
+    "reference_dataset": "{project_root}/data/robot_reference_lerobot",
+    "stereo_calibration": "{project_root}/calibration/stereo.json",
+    "base_calibration": "{project_root}/calibration/camera_to_robot_base.json",
+    "start_contract": "{project_root}/calibration/demonstrated_robot_start.json",
+    "adapter_root": "{project_root}/adapters",
+    "timeline_adapter": "{adapter_root}/build_ego_no_rokoko_15hz_timeline.py",
+    "gripper_fusion_adapter": "{adapter_root}/fuse_hamer_revo2_gripper.py",
+    "robot_ik_adapter": "{adapter_root}/build_ego_fruit_ik_trajectory.py",
+    "dataset_packer_adapter": "{adapter_root}/prepare_pi05_ego_fruit_lerobot.py",
+    "episode_first": "1",
+    "episode_last": "100",
+    "robot_episode_first": "0",
+    "robot_episode_last": "99",
+    "gripper_state_index": "-1",
+    "task_instruction": "Pick the object and place it in the target container.",
+    "artifact_root": "{project_root}/artifacts/ego_hamer_stereo_ik",
+    "manifest_raw": "{artifact_root}/manifest_raw.json",
+    "manifest_ready": "{artifact_root}/manifest_timeline_ready.json",
+    "manifest_ik_ready": "{artifact_root}/manifest_ik_ready.json",
+    "derived_root": "{artifact_root}/derived",
+    "ik_root": "{derived_root}/ik",
+    "gripper_prior": "{derived_root}/robot_gripper_prior.json",
+    "audit_report": "{artifact_root}/pipeline_audit.json",
+    "output_root": "{project_root}/outputs/ego_hamer_stereo_ik_lerobot",
+    "output_repo_id": "local/ego_hamer_stereo_ik_lerobot"
+  },
+  "run_root": "{artifact_root}/runs",
+  "stages": [
+    {
+      "name": "manifest_raw",
+      "description": "Discover Episodes and reject structurally incomplete raw recordings without modifying them.",
+      "cwd": "{project_root}",
+      "requires": ["{source_root}", "{pipeline_root}/tools/build_episode_manifest.py"],
+      "produces": ["{manifest_raw}"],
+      "command": [
+        "python3", "{pipeline_root}/tools/build_episode_manifest.py", "{source_root}",
+        "--output", "{manifest_raw}", "--first-episode", "{episode_first}",
+        "--last-episode", "{episode_last}",
+        "--required", "rgb/camera1.avi", "--required", "rgb/camera2_gopro.mp4",
+        "--required", "rgb/camera3.avi", "--required", "rgb/camera1_timestamps.csv",
+        "--required", "rgb/camera3_timestamps.csv", "--required", "tactile/tactile_timestamps.csv",
+        "--required", "sync/trigger_log.json"
+      ]
+    },
+    {
+      "name": "sync_15hz",
+      "description": "Build a causal 15 Hz common camera/tactile timeline without requiring Rokoko.",
+      "cwd": "{project_root}",
+      "requires": ["{manifest_raw}", "{timeline_adapter}"],
+      "command": [
+        "python3", "{pipeline_root}/tools/run_with_manifest.py", "--manifest", "{manifest_raw}",
+        "--target-flag=--episode", "--", "python3", "{timeline_adapter}",
+        "{source_root}", "--skip-failed", "--summary-path", "{derived_root}/timeline_summary.json"
+      ]
+    },
+    {
+      "name": "manifest_timeline_ready",
+      "description": "Freeze the downstream selection after timeline construction.",
+      "cwd": "{project_root}",
+      "requires": ["{manifest_raw}"],
+      "produces": ["{manifest_ready}"],
+      "command": [
+        "python3", "{pipeline_root}/tools/build_episode_manifest.py", "{source_root}",
+        "--output", "{manifest_ready}", "--first-episode", "{episode_first}",
+        "--last-episode", "{episode_last}",
+        "--required", "sync/unified_no_rokoko_15hz_timeline.csv"
+      ]
+    },
+    {
+      "name": "robot_gripper_prior",
+      "description": "Calibrate robust gripper anchors from actual robot feedback.",
+      "cwd": "{project_root}",
+      "requires": ["{robot_dataset}", "{pipeline_root}/tools/build_robot_gripper_prior.py"],
+      "produces": ["{gripper_prior}"],
+      "command": [
+        "python3", "{pipeline_root}/tools/build_robot_gripper_prior.py", "{robot_dataset}",
+        "--output-dir", "{derived_root}", "--output-prefix", "robot_gripper_prior",
+        "--first-episode", "{robot_episode_first}", "--last-episode", "{robot_episode_last}",
+        "--state-index", "{gripper_state_index}", "--task-scope", "{task_instruction}"
+      ]
+    },
+    {
+      "name": "hamer_camera1",
+      "description": "Run the optional external hand-pose backend on camera1 timeline frames.",
+      "cwd": "{project_root}",
+      "requires": ["{manifest_ready}", "{humanego_root}/build_hamer_hand_cam.py"],
+      "command": [
+        "python3", "{pipeline_root}/tools/run_with_manifest.py", "--manifest", "{manifest_ready}",
+        "--target-flag=--episode", "--", "/usr/bin/python3", "{humanego_root}/build_hamer_hand_cam.py",
+        "{source_root}", "--camera", "camera1", "--device", "cuda", "--no-qc-video", "--no-qc-joints21"
+      ]
+    },
+    {
+      "name": "hamer_camera3",
+      "description": "Run the optional external hand-pose backend on camera3 timeline frames.",
+      "cwd": "{project_root}",
+      "requires": ["{manifest_ready}", "{humanego_root}/build_hamer_hand_cam.py"],
+      "command": [
+        "python3", "{pipeline_root}/tools/run_with_manifest.py", "--manifest", "{manifest_ready}",
+        "--target-flag=--episode", "--", "/usr/bin/python3", "{humanego_root}/build_hamer_hand_cam.py",
+        "{source_root}", "--camera", "camera3", "--device", "cuda", "--no-qc-video", "--no-qc-joints21"
+      ]
+    },
+    {
+      "name": "stereo_wrist",
+      "description": "Triangulate a metric wrist trajectory and reject bad epipolar/reprojection pairs.",
+      "cwd": "{project_root}",
+      "requires": ["{manifest_ready}", "{humanego_root}/build_hand_stereo_15hz.py", "{stereo_calibration}"],
+      "command": [
+        "python3", "{pipeline_root}/tools/run_with_manifest.py", "--manifest", "{manifest_ready}",
+        "--target-flag=--episode", "--", "/usr/bin/python3", "{humanego_root}/build_hand_stereo_15hz.py",
+        "{source_root}", "--calibration", "{stereo_calibration}", "--output-label", "open_pipeline",
+        "--max-epipolar-error-px", "40", "--max-reprojection-error-px", "32", "--no-qc-video"
+      ]
+    },
+    {
+      "name": "fuse_gripper",
+      "description": "Fuse visual closure with robot-scale anchors and a weak occlusion fallback.",
+      "cwd": "{project_root}",
+      "requires": ["{manifest_ready}", "{gripper_prior}", "{gripper_fusion_adapter}"],
+      "accept_returncodes": [0, 3],
+      "command": [
+        "python3", "{pipeline_root}/tools/run_with_manifest.py", "--manifest", "{manifest_ready}",
+        "--mode", "csv", "--target-flag=--episodes", "--", "python3",
+        "{gripper_fusion_adapter}", "--source-root", "{source_root}",
+        "--prior", "{gripper_prior}", "--overwrite"
+      ]
+    },
+    {
+      "name": "manifest_ik_ready",
+      "description": "Exclude missing stereo outputs and failed gripper-fusion Episodes before IK.",
+      "cwd": "{project_root}",
+      "requires": ["{manifest_ready}", "{pipeline_root}/tools/filter_episode_manifest.py"],
+      "produces": ["{manifest_ik_ready}"],
+      "accept_returncodes": [0, 3],
+      "command": [
+        "python3", "{pipeline_root}/tools/filter_episode_manifest.py", "--input", "{manifest_ready}",
+        "--source-root", "{source_root}", "--output", "{manifest_ik_ready}",
+        "--required", "sync/humanego_min/T_hand_cam_stereo_open_pipeline_15hz.csv",
+        "--required", "sync/gripper_1dof_15hz.csv",
+        "--json-equals", "sync/gripper_hamer_robot_prior_metadata.json:status=PASS"
+      ]
+    },
+    {
+      "name": "robot_ik",
+      "description": "Run the configured robot retargeting/IK adapter and its quality gates.",
+      "cwd": "{project_root}",
+      "requires": ["{manifest_ik_ready}", "{robot_ik_adapter}", "{base_calibration}", "{start_contract}"],
+      "produces": ["{ik_root}/batch_summary.json"],
+      "accept_returncodes": [0, 3],
+      "command": [
+        "python3", "{pipeline_root}/tools/run_with_manifest.py", "--manifest", "{manifest_ik_ready}",
+        "--mode", "csv", "--target-flag=--episodes", "--", "python3", "{robot_ik_adapter}",
+        "--source-root", "{source_root}", "--output-root", "{ik_root}", "--manifest", "{manifest_ik_ready}",
+        "--start-contract", "{start_contract}", "--calibration", "{base_calibration}",
+        "--ik-backend-script", "{humanego_root}/build_ego_ik_task2_trajectory.py",
+        "--stereo-name", "T_hand_cam_stereo_open_pipeline_15hz.csv",
+        "--gripper-relative-path", "sync/gripper_1dof_15hz.csv", "--gripper-is-robot", "--skip-failed"
+      ]
+    },
+    {
+      "name": "audit",
+      "description": "Create an explicit per-Episode training-ready audit.",
+      "cwd": "{project_root}",
+      "requires": ["{manifest_ready}", "{ik_root}/batch_summary.json"],
+      "produces": ["{audit_report}"],
+      "command": [
+        "python3", "{pipeline_root}/tools/audit_episode_artifacts.py", "--manifest", "{manifest_ready}",
+        "--source-root", "{source_root}", "--ik-root", "{ik_root}", "--output", "{audit_report}",
+        "--timeline-relative", "sync/unified_no_rokoko_15hz_timeline.csv",
+        "--stage", "hamer_camera1=sync/humanego_min/hamer_hand_features_15hz.csv",
+        "--stage", "hamer_camera3=sync/humanego_min_cam3/hamer_hand_features_15hz.csv",
+        "--stage", "stereo=sync/humanego_min/T_hand_cam_stereo_open_pipeline_15hz.csv",
+        "--stage", "gripper=sync/gripper_1dof_15hz.csv"
+      ]
+    },
+    {
+      "name": "pack_lerobot",
+      "description": "Pack only quality-passed Episodes and write normalization statistics.",
+      "cwd": "{project_root}",
+      "requires": ["{dataset_packer_adapter}", "{reference_dataset}/meta/info.json", "{audit_report}"],
+      "produces": ["{output_root}/meta/info.json", "{output_root}/preprocess_summary.json"],
+      "env": {"HUMANEGO_PIPELINE_ROOT": "{humanego_root}"},
+      "command": [
+        "python3", "{dataset_packer_adapter}", "--source-root", "{source_root}", "--ik-root", "{ik_root}",
+        "--timeline-relative-path", "sync/unified_no_rokoko_15hz_timeline.csv",
+        "--reference-dataset", "{reference_dataset}", "--output-root", "{output_root}",
+        "--output-repo-id", "{output_repo_id}", "--task", "{task_instruction}",
+        "--domain", "ego_hamer_stereo_ik", "--require-gripper-fusion-pass"
+      ]
+    }
+  ]
+}

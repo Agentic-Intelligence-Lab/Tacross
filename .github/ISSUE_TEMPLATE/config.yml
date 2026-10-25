@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Troubleshooting guide
+    url: https://github.com/fangdiyu/embodied-postprocess-pipeline/blob/main/docs/TROUBLESHOOTING.md
+    about: Common failures — ffprobe, shared windows, IK gates, missing toolkit.
+  - name: Security report
+    url: https://github.com/fangdiyu/embodied-postprocess-pipeline/security/advisories/new
+    about: Report a vulnerability privately.

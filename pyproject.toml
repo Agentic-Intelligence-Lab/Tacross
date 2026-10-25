@@ -1,0 +1,78 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "embodied-postprocess-pipeline"
+version = "0.1.0"
+description = "Configurable, resumable, auditable post-acquisition pipeline that turns multi-camera embodied recordings into trainable LeRobot datasets."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "Yu Fangdi" }]
+keywords = [
+  "embodied-ai",
+  "robotics",
+  "imitation-learning",
+  "data-pipeline",
+  "lerobot",
+  "hand-pose",
+  "stereo",
+  "inverse-kinematics",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+  "numpy>=1.24",
+  "pandas>=2.0",
+  "pyarrow>=12.0",
+]
+
+[project.optional-dependencies]
+# The fusion and IK adapters smooth trajectories with Savitzky-Golay filters.
+adapters = ["scipy>=1.10"]
+dev = [
+  "pytest>=7.4",
+  "pytest-cov>=4.1",
+  "ruff>=0.5",
+]
+
+[project.urls]
+Homepage = "https://github.com/fangdiyu/embodied-postprocess-pipeline"
+Issues = "https://github.com/fangdiyu/embodied-postprocess-pipeline/issues"
+Changelog = "https://github.com/fangdiyu/embodied-postprocess-pipeline/blob/main/CHANGELOG.md"
+
+[project.scripts]
+postprocess-pipeline = "postprocess_pipeline.pipeline:main"
+
+[tool.setuptools]
+packages = ["postprocess_pipeline", "postprocess_pipeline.tools"]
+
+[tool.setuptools.package-data]
+postprocess_pipeline = ["pipeline.schema.json", "configs/*.json", "*.md"]
+
+[tool.pytest.ini_options]
+testpaths = ["postprocess_pipeline/tests"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "C4", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+# Adapters keep their original layout: they are copied into other projects.
+"adapters/*" = ["E741", "B905"]

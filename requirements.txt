@@ -1,0 +1,6 @@
+# The stage runner (postprocess_pipeline/pipeline.py) uses only the standard
+# library. These packages are required by the tabular episode tools and the
+# example dataset generator.
+numpy>=1.24
+pandas>=2.0
+pyarrow>=12.0

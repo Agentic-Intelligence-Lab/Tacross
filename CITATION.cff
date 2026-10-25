@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+message: "If you use this pipeline in academic work, please cite it as below."
+title: "Embodied Post-Processing Pipeline"
+abstract: >-
+  A configurable, resumable, and auditable post-acquisition pipeline that turns
+  raw multi-camera human demonstrations into trainable LeRobot datasets, with an
+  explicit quality gate at every stage: episode manifests, causal 15 Hz time
+  alignment, two-view hand pose, stereo metric wrist recovery, demonstrated
+  gripper priors, robot retargeting and IK, per-episode auditing, and packing
+  with normalization statistics.
+type: software
+authors:
+  - family-names: "Yu"
+    given-names: "Fangdi"
+    affiliation: "Ocean University of China"
+license: LGPL-3.0-only
+version: "0.1.0"
+date-released: "2026-10-25"
+repository-code: "https://github.com/fangdiyu/embodied-postprocess-pipeline"
+url: "https://github.com/fangdiyu/embodied-postprocess-pipeline"
+keywords:
+  - embodied AI
+  - imitation learning
+  - robot data pipeline
+  - hand pose estimation
+  - stereo reconstruction
+  - inverse kinematics
+  - LeRobot
