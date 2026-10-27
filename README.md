@@ -164,10 +164,23 @@ adapters/
   fuse_hamer_revo2_gripper.py            visual closure + robot anchors
   build_ego_fruit_ik_trajectory.py       metric wrist → 7-DoF joint path
   prepare_pi05_ego_fruit_lerobot.py      LeRobot v3 packer + statistics
+  undistort_wrist_view.py                wrist-view dewarp into a derived video
 configs/                        portable template + real-world examples
 examples/                       synthetic demo dataset and config
+hardware/v1/                    tactile board BOM, Gerber and pick-and-place
 docs/                           architecture, stage reference, troubleshooting
 ```
+
+## Hardware
+
+The v1 16×16 tactile board is in [`hardware/v1/`](hardware/v1/README.md):
+Gerber package, bill of materials with LCSC part numbers, and component
+centroids. The board outputs an uncalibrated matrix; the `calibration/`
+contracts in [`docs/DATA_FORMAT.md`](docs/DATA_FORMAT.md) describe what it takes
+to turn that into force values.
+
+Hardware files are documentation for the recordings, not part of the pipeline
+runtime — nothing in `pipeline.py` reads them.
 
 ## What ships, what you bring
 
